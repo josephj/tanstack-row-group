@@ -18,7 +18,6 @@ import {
   Tr,
   Th,
   Td,
-  Checkbox,
   Box,
   Text,
   TableContainer,
@@ -101,15 +100,18 @@ function Table() {
                   if (isGroupedByClient && header.column.id === 'select') {
                     return (
                       <Th key={header.id} colSpan={2}>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        {flexRender(
-                          columns.find((col) => col.id === 'clientName')
-                            ?.header,
-                          header.getContext()
-                        )}
+                        {/* <HStack>
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {flexRender(
+                            columns.find((col) => col.id === 'clientName')
+                              ?.header,
+                            header.getContext()
+                          )} */}
+                        <Text>Client name</Text>
+                        {/* </HStack> */}
                       </Th>
                     );
                   }
@@ -148,13 +150,13 @@ function Table() {
                         cursor="pointer"
                         onClick={row.getToggleExpandedHandler()}
                       >
-                        <Checkbox
+                        {/* <Checkbox
                           background="#ffffff"
                           isChecked={row.getIsSelected()}
                           onChange={row.getToggleSelectedHandler()}
                           onClick={(e) => e.stopPropagation()}
                           mr={2}
-                        />
+                        /> */}
                         <Text as="strong" display="inline-block">
                           {row.groupingValue as string}
                         </Text>{' '}
