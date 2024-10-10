@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
   getGroupedRowModel,
   getExpandedRowModel,
+  getPaginationRowModel,
   flexRender,
   Row,
 } from '@tanstack/react-table';
-// @ts-ignore
-import { data } from './data';
+import { data as fullData } from './data';
 import { columns } from './columns';
 import {
+  Button,
   Table as ChakraTable,
   Thead,
   Tbody,
@@ -40,12 +41,26 @@ function Table() {
   const [rowSelection, setRowSelection] = React.useState<
     Record<string, boolean>
   >({});
+  const [data, setData] = useState<Invoice[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  // Simulated API call
+  const fetchData = (start: number, size: number) => {
+    setLoading(true);
+    // Simulate API delay
+    setTimeout(() => {
+      setData(fullData.slice(start, start + size));
+      setTotalCount(fullData.length);
+      setLoading(false);
+    }, 500);
+  };
 
   const table = useReactTable({
     data,
     columns,
     state: {
-      grouping, // Grouping by client name
+      grouping,
       expanded: true,
       rowSelection,
     },
@@ -54,8 +69,15 @@ function Table() {
     getExpandedRowModel: getExpandedRowModel(),
     getGroupedRowModel: getGroupedRowModel(),
     getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     enableRowSelection: true,
+    manualPagination: true,
+    pageCount: Math.ceil(totalCount / 25),
   });
+
+  useEffect(() => {
+    fetchData(table.getState().pagination.pageIndex * 25, 25);
+  }, [table.getState().pagination.pageIndex]);
 
   return (
     <VStack spacing={4} align="stretch" marginY={10}>
@@ -111,63 +133,101 @@ function Table() {
             ))}
           </Thead>
           <Tbody>
-            {table.getRowModel().rows.map((row) => {
-              if (row.getIsGrouped()) {
+            {loading ? (
+              <Tr>
+                <Td colSpan={columns.length}>Loading...</Td>
+              </Tr>
+            ) : (
+              table.getRowModel().rows.map((row) => {
+                if (row.getIsGrouped()) {
+                  return (
+                    <Tr key={row.id}>
+                      <Td
+                        backgroundColor="gray.100"
+                        colSpan={row.getVisibleCells().length}
+                        cursor="pointer"
+                        onClick={row.getToggleExpandedHandler()}
+                      >
+                        <Checkbox
+                          background="#ffffff"
+                          isChecked={row.getIsSelected()}
+                          onChange={row.getToggleSelectedHandler()}
+                          onClick={(e) => e.stopPropagation()}
+                          mr={2}
+                        />
+                        <Text as="strong" display="inline-block">
+                          {row.groupingValue as string}
+                        </Text>{' '}
+                        ({row.subRows.length} invoices)
+                      </Td>
+                    </Tr>
+                  );
+                }
                 return (
                   <Tr key={row.id}>
-                    <Td
-                      backgroundColor="gray.100"
-                      colSpan={row.getVisibleCells().length}
-                      cursor="pointer"
-                      onClick={row.getToggleExpandedHandler()}
-                    >
-                      <Checkbox
-                        background="#ffffff"
-                        isChecked={row.getIsSelected()}
-                        onChange={row.getToggleSelectedHandler()}
-                        onClick={(e) => e.stopPropagation()}
-                        mr={2}
-                      />
-                      <Text as="strong" display="inline-block">
-                        {row.groupingValue as string}
-                      </Text>{' '}
-                      ({row.subRows.length} invoices)
-                    </Td>
-                  </Tr>
-                );
-              }
-              return (
-                <Tr key={row.id}>
-                  {row.getVisibleCells().map((cell) => {
-                    const isGroupedByClient = grouping.includes('clientName');
-                    if (cell.column.id === 'select') {
+                    {row.getVisibleCells().map((cell) => {
+                      const isGroupedByClient = grouping.includes('clientName');
+                      if (cell.column.id === 'select') {
+                        return (
+                          <Td key={cell.id} colSpan={isGroupedByClient ? 2 : 1}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </Td>
+                        );
+                      }
+                      if (
+                        cell.column.id === 'clientName' &&
+                        isGroupedByClient
+                      ) {
+                        return null;
+                      }
                       return (
-                        <Td key={cell.id} colSpan={isGroupedByClient ? 2 : 1}>
+                        <Td key={cell.id}>
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext()
                           )}
                         </Td>
                       );
-                    }
-                    if (cell.column.id === 'clientName' && isGroupedByClient) {
-                      return null;
-                    }
-                    return (
-                      <Td key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </Td>
-                    );
-                  })}
-                </Tr>
-              );
-            })}
+                    })}
+                  </Tr>
+                );
+              })
+            )}
           </Tbody>
         </ChakraTable>
       </TableContainer>
+
+      <Box
+        width="1200px"
+        marginX="auto"
+        maxWidth="90%"
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+      >
+        <Text>
+          Page {table.getState().pagination.pageIndex + 1} of{' '}
+          {table.getPageCount()}
+        </Text>
+        <Box>
+          <Button
+            onClick={() => table.previousPage()}
+            isDisabled={!table.getCanPreviousPage()}
+            mr={2}
+          >
+            Previous
+          </Button>
+          <Button
+            onClick={() => table.nextPage()}
+            isDisabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+        </Box>
+      </Box>
 
       <Box width="1200px" marginX="auto" maxWidth="90%" fontSize="12px">
         <Heading as="h4" size="md" mb={2}>
